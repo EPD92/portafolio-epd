@@ -1,0 +1,507 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Portafolio EPD v15 · Live</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d1117;--surface:#161b22;--surface2:#1c2430;--border:#2a3748;--text:#e6edf3;--muted:#7d8fa3;--dim:#4a5568;--green:#3fb950;--red:#f85149;--amber:#d29922;--blue:#58a6ff;--purple:#bc8cff;--teal:#39d3aa}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace}
+.header{padding:20px 24px 14px;border-bottom:1px solid var(--border)}
+.header h1{font-size:17px;font-weight:600;letter-spacing:.5px;color:var(--blue)}
+.header .meta{font-size:10px;color:var(--muted);margin-top:4px;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.badge{display:inline-block;padding:2px 7px;border-radius:3px;font-size:9px;font-weight:600;letter-spacing:.5px;border:1px solid}
+.badge-blue{color:var(--blue);border-color:var(--blue);background:rgba(88,166,255,.08)}
+.badge-amber{color:var(--amber);border-color:var(--amber);background:rgba(210,153,34,.08)}
+.badge-green{color:var(--green);border-color:var(--green);background:rgba(63,185,80,.08)}
+
+.live-bar{display:flex;align-items:center;gap:10px;padding:10px 24px;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap}
+.api-input{background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 10px;font-size:10px;font-family:inherit;width:230px;letter-spacing:.5px}
+.api-input:focus{outline:none;border-color:var(--blue)}
+.btn-update{background:var(--blue);color:#000;border:none;border-radius:4px;padding:7px 14px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;letter-spacing:.5px;transition:opacity .15s}
+.btn-update:hover{opacity:.85}
+.btn-update:disabled{opacity:.45;cursor:not-allowed}
+.btn-export{background:transparent;color:var(--teal);border:1px solid var(--teal);border-radius:4px;padding:7px 14px;font-size:10px;font-weight:600;font-family:inherit;cursor:pointer;letter-spacing:.5px;transition:opacity .15s;display:none}
+.btn-export:hover{opacity:.75}
+.live-status{font-size:10px;color:var(--muted);flex:1;min-width:120px}
+.pulse{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);margin-right:5px;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.fx-display{font-size:10px;color:var(--teal);font-weight:500}
+
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+.kpi{background:var(--bg);padding:16px 18px}
+.kpi .label{font-size:9px;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:5px}
+.kpi .val{font-size:19px;font-weight:600;line-height:1;transition:color .3s}
+.kpi .sub{font-size:10px;color:var(--muted);margin-top:3px}
+.fire-bar{height:3px;background:var(--border);border-radius:2px;margin-top:6px;overflow:hidden}
+.fire-bar span{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--teal));transition:width .6s}
+.green{color:var(--green)}.red{color:var(--red)}.amber{color:var(--amber)}.blue{color:var(--blue)}
+
+.section{padding:16px 24px}
+.section-title{font-size:10px;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.port-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.port-card{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:14px;cursor:pointer;transition:border-color .15s}
+.port-card:hover{border-color:var(--blue)}
+.port-card.active{border-color:var(--blue);background:var(--surface2)}
+.pc-name{font-size:10px;color:var(--muted);margin-bottom:5px}
+.pc-val{font-size:16px;font-weight:600;transition:all .3s}
+.pc-gp{font-size:10px;margin-top:2px}
+.pc-meta{font-size:9px;color:var(--dim);margin-top:5px}
+.pc-btn{display:inline-block;margin-top:8px;font-size:9px;color:var(--blue);letter-spacing:.5px;text-transform:uppercase;padding:3px 7px;border:1px solid rgba(88,166,255,.3);border-radius:3px}
+
+.detail-panel{display:none;margin-top:12px;border:1px solid var(--border);border-radius:7px;background:var(--surface);overflow:hidden}
+.detail-panel.open{display:block}
+.detail-header{padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.detail-header h3{font-size:12px;font-weight:600}
+.close-btn{font-size:10px;color:var(--muted);cursor:pointer;padding:3px 7px;border:1px solid var(--border);border-radius:3px}
+.close-btn:hover{color:var(--text)}
+
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:10px}
+thead th{padding:8px 10px;text-align:right;color:var(--muted);font-weight:500;letter-spacing:.5px;text-transform:uppercase;font-size:9px;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--surface2)}
+thead th:first-child,thead th:nth-child(2){text-align:left}
+tbody td{padding:8px 10px;text-align:right;border-bottom:1px solid rgba(42,55,72,.4);white-space:nowrap}
+tbody td:first-child,tbody td:nth-child(2){text-align:left}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(88,166,255,.03)}
+.td-name{font-weight:500;font-size:11px}
+.td-broker{font-size:8px;color:var(--dim);margin-top:1px}
+.td-sub{font-size:8px;color:var(--dim)}
+.pending-tag{font-size:8px;color:var(--amber)}
+.live-tag{font-size:8px;color:var(--green);margin-left:3px}
+.stale-tag{font-size:8px;color:var(--dim);margin-left:3px}
+@keyframes flash{0%{background:rgba(63,185,80,.15)}100%{background:transparent}}
+.flashed td{animation:flash .8s ease}
+
+.pie-row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;padding:14px 18px;border-top:1px solid var(--border)}
+.pie-wrap{position:relative;width:160px;height:160px;flex-shrink:0}
+.pie-legend{flex:1;min-width:140px;display:grid;gap:5px;font-size:10px}
+.pie-legend-row{display:flex;align-items:center;gap:6px}
+.pie-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.pie-label{flex:1;color:var(--text)}
+.pie-pct{color:var(--muted);min-width:32px;text-align:right}
+.pie-val{font-weight:600;text-align:right;min-width:70px}
+
+.evol-section{padding:16px 24px}
+.chart-controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.chart-controls select{font-size:10px;padding:5px 8px;background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:4px;cursor:pointer;font-family:inherit}
+.series-toggles{display:flex;gap:5px;flex-wrap:wrap}
+.stoggle{font-size:9px;padding:3px 8px;border-radius:3px;cursor:pointer;border:1px solid;transition:opacity .15s}
+.stoggle.off{opacity:.3}
+.canvas-wrap{position:relative;width:100%;height:240px}
+.legend-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:9px;color:var(--muted)}
+.legend-dot{width:7px;height:7px;border-radius:2px}
+
+.bench{padding:12px 16px;background:var(--surface);border:1px dashed var(--border);border-radius:7px;font-size:10px;color:var(--muted);margin:0 24px 16px}
+.bench strong{color:var(--text);display:block;margin-bottom:3px}
+.note-box{margin:0 24px 24px;padding:12px 16px;border-left:3px solid var(--amber);background:rgba(210,153,34,.06);border-radius:0 5px 5px 0;font-size:10px;color:var(--muted);line-height:1.8}
+.error-log{margin:0 24px 14px;padding:10px 14px;background:rgba(248,81,73,.06);border:1px solid rgba(248,81,73,.2);border-radius:5px;font-size:9px;color:var(--red);display:none;line-height:1.8}
+</style></head><body>
+
+<div class="header">
+  <h1>PORTAFOLIO EPD · PRECIOS EN VIVO</h1>
+  <div class="meta">
+    <span>Base: 31 mayo 2026 · JSON maestro v15</span>
+    <span class="badge badge-blue">EDEN consolidado 24 títulos</span>
+    <span class="badge badge-amber">CELH pendiente cotización</span>
+    <span id="lastUpdate" class="badge badge-green" style="display:none"></span>
+  </div>
+</div>
+
+<div class="live-bar">
+  <input class="api-input" type="password" id="apiKey" placeholder="API Key Finnhub..." value="d8ie5c1r01qm63bblrb0">
+  <button class="btn-update" id="btnUpdate" onclick="fetchLivePrices()">⟳ Actualizar precios</button>
+  <button class="btn-export" id="btnExport" onclick="exportJSON()">↓ Exportar JSON</button>
+  <div class="live-status" id="liveStatus">Presiona el botón para obtener precios en tiempo real vía Finnhub</div>
+  <div class="fx-display" id="fxDisplay"></div>
+</div>
+
+<div class="error-log" id="errorLog"></div>
+
+<div class="kpi-grid">
+  <div class="kpi"><div class="label">Patrimonio Neto</div><div class="val" id="kpi-nw">$1,261,189</div><div class="sub">activos totales - deudas</div></div>
+  <div class="kpi"><div class="label">Avance FIRE</div><div class="val green" id="kpi-fire">3.07%</div><div class="fire-bar"><span id="fire-bar-inner" style="width:3.07%"></span></div><div class="sub">Meta $41,018,480</div></div>
+  <div class="kpi"><div class="label">Portafolios Financieros</div><div class="val blue" id="kpi-fp">$669,932</div><div class="sub" id="kpi-fp-gp">G/P base JSON v15</div></div>
+  <div class="kpi"><div class="label">Liquidez Real MXN</div><div class="val green">$210,130</div><div class="sub">Nu+DiDi+BBVA+efectivo</div></div>
+  <div class="kpi"><div class="label">AFORE + PPR</div><div class="val">$639,485</div><div class="sub">activos pasivos de retiro</div></div>
+  <div class="kpi"><div class="label">Deudas</div><div class="val red">-$48,227</div><div class="sub">BBVA $44,327 · Nu $3,901</div></div>
+</div>
+
+<div class="section">
+  <div class="section-title">Portafolios de inversión</div>
+  <div class="port-cards">
+    <div class="port-card" onclick="showDetail('indexed')"><div class="pc-name">Portafolio Indizado Global</div><div class="pc-val blue" id="pc-val-indexed">$169,004</div><div class="pc-gp green" id="pc-gp-indexed">+$10,617 · +6.70%</div><div class="pc-meta">Costo $158,387 · 10 ETFs</div><div class="pc-btn">Ver activos ↓</div></div>
+    <div class="port-card" onclick="showDetail('fixed')"><div class="pc-name">Renta Fija / Ahorro / Liquidez</div><div class="pc-val blue" id="pc-val-fixed">$239,136</div><div class="pc-gp red" id="pc-gp-fixed">-$587 · -0.24%</div><div class="pc-meta">Costo $239,723 · 9 instrumentos</div><div class="pc-btn">Ver activos ↓</div></div>
+    <div class="port-card" onclick="showDetail('patrimonial')"><div class="pc-name">Portafolio Patrimonial</div><div class="pc-val blue" id="pc-val-pat">$226,439</div><div class="pc-gp green" id="pc-gp-pat">+$1,638 · +0.73%</div><div class="pc-meta">Costo $224,801 · 14 activos</div><div class="pc-btn">Ver activos ↓</div></div>
+    <div class="port-card" onclick="showDetail('cycles')"><div class="pc-name">Ciclos Económicos</div><div class="pc-val blue" id="pc-val-cy">$35,352</div><div class="pc-gp green" id="pc-gp-cy">+$178 · +0.50%</div><div class="pc-meta">Costo $35,174 · 3 ETFs</div><div class="pc-btn">Ver activos ↓</div></div>
+  </div>
+
+  <div class="detail-panel" id="detail-indexed">
+    <div class="detail-header"><h3>Portafolio Indizado Global</h3><span class="close-btn" onclick="closeDetail('indexed')">✕ cerrar</span></div>
+    <div class="tbl-wrap"><table><thead><tr><th>País / Nombre</th><th>Símbolo</th><th>Títulos</th><th>Costo prom MXN</th><th>Precio vivo MXN</th><th>Valor compra</th><th>Valor actual</th><th>G/P $</th><th>G/P %</th><th>Peso %</th><th>Objetivo</th></tr></thead><tbody id="tbody-indexed"></tbody></table></div>
+    <div class="pie-row"><div class="pie-wrap"><canvas id="pie-indexed" role="img" aria-label="Distribución regional portafolio indizado">Distribución regional.</canvas></div><div class="pie-legend" id="legend-indexed"></div></div>
+  </div>
+
+  <div class="detail-panel" id="detail-fixed">
+    <div class="detail-header"><h3>Renta Fija / Ahorro / Liquidez</h3><span class="close-btn" onclick="closeDetail('fixed')">✕ cerrar</span></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Instrumento</th><th>Símbolo</th><th>Unidades</th><th>Costo prom</th><th>Precio</th><th>Valor compra</th><th>Valor actual</th><th>G/P $</th><th>G/P %</th><th>Peso %</th><th>Objetivo</th></tr></thead><tbody id="tbody-fixed"></tbody></table></div>
+  </div>
+
+  <div class="detail-panel" id="detail-patrimonial">
+    <div class="detail-header"><h3>Portafolio Patrimonial · por sector</h3><span class="close-btn" onclick="closeDetail('patrimonial')">✕ cerrar</span></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Empresa</th><th>Símbolo</th><th>Acciones</th><th>Costo prom MXN</th><th>Precio vivo MXN</th><th>Valor compra</th><th>Valor actual</th><th>G/P $</th><th>G/P %</th><th>Peso %</th><th>Objetivo</th></tr></thead><tbody id="tbody-patrimonial"></tbody></table></div>
+    <div class="pie-row"><div class="pie-wrap"><canvas id="pie-patrimonial" role="img" aria-label="Distribución sectorial portafolio patrimonial">Distribución sectorial.</canvas></div><div class="pie-legend" id="legend-patrimonial"></div></div>
+  </div>
+
+  <div class="detail-panel" id="detail-cycles">
+    <div class="detail-header"><h3>Portafolio de Ciclos Económicos</h3><span class="close-btn" onclick="closeDetail('cycles')">✕ cerrar</span></div>
+    <div class="tbl-wrap"><table><thead><tr><th>País / ETF</th><th>Símbolo</th><th>Títulos</th><th>Costo prom MXN</th><th>Precio vivo MXN</th><th>Valor compra</th><th>Valor actual</th><th>G/P $</th><th>G/P %</th><th>Peso %</th><th>Objetivo</th></tr></thead><tbody id="tbody-cycles"></tbody></table></div>
+  </div>
+</div>
+
+<div class="evol-section">
+  <div class="section-title">Evolución patrimonial</div>
+  <div class="chart-controls">
+    <select id="rangeSelect"><option value="all">Todo el historial</option><option value="2026" selected>Año 2026</option><option value="r12">Últimos 12 meses</option></select>
+    <div class="series-toggles" id="seriesTogles"></div>
+  </div>
+  <div class="canvas-wrap"><canvas id="evolChart" role="img" aria-label="Evolución patrimonial mensual">Evolución mensual del patrimonio.</canvas></div>
+  <div class="legend-row" id="evolLegend"></div>
+</div>
+
+<div class="bench">
+  <strong>Comparación contra S&amp;P 500 — pendiente de datos benchmark</strong>
+  Comparación vía TWR/XIRR o simulación de aportaciones equivalentes a VOO. No contra crecimiento bruto con aportaciones.
+</div>
+<div class="note-box">
+  · EDEN consolidado: Actinver 21 + IBKR 3 = 24 títulos · CELH sin cotización de mercado al corte, usa valor Actinver como base<br>
+  · Liquidez real MXN: Nu + DiDi + BBVA + efectivo + Actinver MXN. FLOA e IB01 son renta fija USD — excluidos de liquidez real<br>
+  · Al presionar "Actualizar precios" se consulta Finnhub para cada ticker y se recalcula el portafolio usando USD/MXN live<br>
+  · La API key se usa solo localmente en tu navegador — no se envía a ningún servidor externo salvo Finnhub
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt2=v=>v==null?'—':'$'+Number(v).toLocaleString('es-MX',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmt0=v=>v==null?'—':'$'+Math.round(v).toLocaleString('es-MX');
+const pct=v=>v==null?'—':(Number(v)*100).toFixed(2)+'%';
+const sign=v=>v>=0?'green':'red';
+const num=v=>v==null?'—':Number(v).toLocaleString('es-MX',{maximumFractionDigits:6});
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+
+const FIRE_TARGET=41018479.78, PASSIVE=639485.18, DEBTS=48227.41;
+let usdmxn=17.33236;
+
+const IB=[
+  {n:'S&P 500 / Estados Unidos',t:'VOO',u:2,cp:10043.75,vc:20087.5,r:'América del Norte',br:'Actinver 2'},
+  {n:'Taiwán',t:'EWT',u:7,cp:1027.83,vc:7194.83,r:'Asia Pacífico',br:'Actinver 7'},
+  {n:'Países Bajos',t:'EWN',u:8,cp:1006.63,vc:8053.0,r:'Europa',br:'Actinver 8'},
+  {n:'Dinamarca',t:'EDEN',u:24,cp:1908.70,vc:45808.72,r:'Europa',br:'Actinver 21 / IBKR 3'},
+  {n:'Suiza',t:'EWL',u:8,cp:1038.75,vc:8310.0,r:'Europa',br:'Actinver 8'},
+  {n:'Irlanda',t:'EIRL',u:7,cp:1251.29,vc:8759.0,r:'Europa',br:'Actinver 7'},
+  {n:'Canadá',t:'EWC',u:6,cp:842.35,vc:5054.08,r:'América del Norte',br:'Actinver 6'},
+  {n:'Alemania',t:'EWG',u:6,cp:764.56,vc:4587.36,r:'Europa',br:'Actinver 6'},
+  {n:'Japón',t:'EWJ',u:2,cp:1424.77,vc:2849.53,r:'Asia Pacífico',br:'Actinver 2'},
+  {n:'India',t:'INDA',u:53,cp:899.69,vc:47683.46,r:'Asia Emergente',br:'Actinver 53'}
+];
+const FD=[
+  {n:'iShares Floating Rate Bond ETF',t:'FLOA',u:77,cp:115.88,vc:8922.8,br:'Actinver 77',cat:'ETF Renta Fija USD',isUSD:true},
+  {n:'iShares Treasury Bond 0-1yr UCITS',t:'IB01',u:9,cp:2142.11,vc:19279.0,br:'Actinver 9',cat:'ETF Renta Fija USD',isUSD:true},
+  {n:'Fondo deuda mexicana Actinver',t:null,u:386,cp:10.71,vc:4133.29,va:4138.25,br:'Actinver 386',cat:'Fondo MXN',fixed:true},
+  {n:'Efectivo Actinver',t:null,u:null,cp:null,vc:1752.33,va:1752.33,br:'Actinver',cat:'Efectivo broker',fixed:true},
+  {n:'Efectivo USD IBKR',t:null,u:80.56,cp:17.33,vc:1396.28,va:1396.28,br:'IBKR',cat:'Efectivo USD',fixed:true},
+  {n:'BBVA',t:null,u:null,cp:null,vc:2056.66,va:2056.66,br:'Externo',cat:'Cuenta MXN',fixed:true},
+  {n:'DiDi',t:null,u:null,cp:null,vc:153317.35,va:153317.35,br:'Externo',cat:'Cuenta MXN',fixed:true},
+  {n:'Efectivo físico',t:null,u:null,cp:null,vc:6000.0,va:6000.0,br:'Externo',cat:'Efectivo',fixed:true},
+  {n:'Nu México',t:null,u:null,cp:null,vc:42865.62,va:42865.62,br:'Externo',cat:'Cuenta MXN',fixed:true}
+];
+const PA=[
+  {n:'Bitcoin',t:'BINANCE:BTCUSDT',u:0.02161742,cp:1410946,vc:30501.01,sector:'Refugios de valor',br:'Bitso',isCrypto:true},
+  {n:'Adobe',t:'ADBE',u:4,cp:4264.4,vc:17057.6,sector:'Technology',br:'Actinver 4'},
+  {n:'Duolingo',t:'DUOL',u:27,cp:2022.33,vc:54603.0,sector:'Technology',br:'Actinver 27'},
+  {n:'Intuit',t:'INTU',u:5,cp:5847.38,vc:29236.88,sector:'Technology',br:'Actinver 5'},
+  {n:'Afya',t:'AFYA',u:30,cp:241.32,vc:7239.6,sector:'Consumer Services',br:'IBKR 30'},
+  {n:'Chipotle Mexican Grill',t:'CMG',u:19,cp:584.0,vc:11096.0,sector:'Consumer Discretionary',br:'Actinver 19'},
+  {n:'Lululemon',t:'LULU',u:1,cp:2098.0,vc:2098.0,sector:'Consumer Discretionary',br:'Actinver 1'},
+  {n:'Novo Nordisk',t:'NVO',u:49,cp:741.59,vc:36337.98,sector:'Health Care',br:'Actinver 49'},
+  {n:'Veeva Systems',t:'VEEV',u:5,cp:2841.4,vc:14207.0,sector:'Health Care',br:'Actinver 5'},
+  {n:'Zoetis',t:'ZTS',u:4,cp:1290.0,vc:5160.0,sector:'Health Care',br:'Actinver 4'},
+  {n:'Nu Holdings',t:'NU',u:29,cp:223.76,vc:6489.0,sector:'Financials',br:'Actinver 29'},
+  {n:'PayPal',t:'PYPL',u:4,cp:803.75,vc:3215.0,sector:'Financials',br:'Actinver 4'},
+  {n:'Lennar',t:'LEN',u:4,cp:1574.0,vc:6296.0,sector:'Real Estate',br:'Actinver 4'},
+  {n:'Celsius Holdings',t:'CELH',u:2,cp:632.0,vc:1264.0,sector:'Consumer Staples',br:'Actinver 2',pending:true}
+];
+const CY=[
+  {n:'Chile ETF',t:'ECH',u:20,cp:730.2,vc:14604.0,r:'Latinoamérica',br:'Actinver 20'},
+  {n:'Nueva Zelanda ETF',t:'ENZL',u:17,cp:777.74,vc:13221.66,r:'Asia Pacífico',br:'IBKR 17'},
+  {n:'Filipinas ETF',t:'EPHE',u:17,cp:432.27,vc:7348.59,r:'Asia Pacífico',br:'IBKR 17'}
+];
+
+const BASE_VA={
+  VOO:24108.97,EWT:12423.84,EWN:9295.69,EDEN:46734.97,EWL:8753.54,EIRL:9224.46,EWC:6115.9,EWG:4516.47,EWJ:3222.43,INDA:44607.95,
+  FLOA:8800.3,IB01:18809.42,
+  'BINANCE:BTCUSDT':27666.06,ADBE:18718.95,DUOL:53816.98,INTU:29291.69,AFYA:7284.79,CMG:10538.07,LULU:2293.76,NVO:38549.08,VEEV:15836.58,ZTS:5342.53,NU:6534.3,PYPL:3087.24,LEN:6324.92,CELH:1154.5,
+  ECH:14552.25,ENZL:13769.17,EPHE:7030.35
+};
+
+let prices={};
+
+function getVA(row){
+  const p=prices[row.t];
+  if(p!=null) return p*row.u;
+  return BASE_VA[row.t]||row.vc;
+}
+function getLivePrice(row){
+  const p=prices[row.t];
+  return p!=null ? p : null;
+}
+
+async function fetchLivePrices(){
+  const apiKey=$('apiKey').value.trim();
+  if(!apiKey){$('liveStatus').innerHTML='⚠ Ingresa tu API key de Finnhub';return;}
+  const btn=$('btnUpdate');
+  btn.disabled=true;btn.textContent='⟳ Consultando...';
+  $('liveStatus').innerHTML='<span class="pulse"></span>Iniciando consulta...';
+  $('errorLog').style.display='none';
+  const errors=[];
+  let fetched=0;
+
+  try{
+    const r=await fetch(`https://finnhub.io/api/v1/forex/rates?base=USD&token=${apiKey}`);
+    const d=await r.json();
+    if(d.quote&&d.quote.MXN){usdmxn=d.quote.MXN;$('fxDisplay').textContent=`USD/MXN live: ${usdmxn.toFixed(4)}`;}
+    else throw new Error('sin dato MXN');
+  }catch(e){errors.push(`USD/MXN: ${e.message} — usando ${usdmxn.toFixed(4)}`);}
+
+  const allTickers=['VOO','EWT','EWN','EDEN','EWL','EIRL','EWC','EWG','EWJ','INDA','FLOA','IB01','ADBE','DUOL','INTU','AFYA','CMG','LULU','NVO','VEEV','ZTS','NU','PYPL','LEN','CELH','ECH','ENZL','EPHE','BINANCE:BTCUSDT'];
+  const total=allTickers.length;
+  for(const tk of allTickers){
+    try{
+      const endpoint=tk.includes(':')?
+        `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(tk)}&token=${apiKey}`:
+        `https://finnhub.io/api/v1/quote?symbol=${tk}&token=${apiKey}`;
+      const r=await fetch(endpoint);
+      const d=await r.json();
+      if(d.c&&d.c>0){prices[tk]=d.c*usdmxn;fetched++;}
+      else throw new Error('precio 0 o vacío');
+    }catch(e){errors.push(`${tk}: ${e.message}`);}
+    await delay(130);
+    $('liveStatus').innerHTML=`<span class="pulse"></span>Descargando precios... ${fetched}/${total}`;
+  }
+
+  renderAllTables(true);
+  updateKPIs();
+  updatePortfolioCards();
+  redrawOpenPies();
+
+  const now=new Date().toLocaleTimeString('es-MX');
+  $('lastUpdate').style.display='inline-block';
+  $('lastUpdate').textContent=`✓ Live ${now}`;
+  $('liveStatus').innerHTML=`<span class="pulse"></span>Actualizado ${now} · ${fetched}/${total} tickers · USD/MXN ${usdmxn.toFixed(4)}`;
+  $('btnExport').style.display='inline-block';
+  if(errors.length){$('errorLog').style.display='block';$('errorLog').innerHTML='<b>Tickers con error (se usa precio base JSON):</b><br>'+errors.join('<br>');}
+  btn.disabled=false;btn.textContent='⟳ Actualizar precios';
+}
+
+function updateKPIs(){
+  const tIB=IB.reduce((s,r)=>s+getVA(r),0);
+  const tFD=FD.reduce((s,r)=>s+(r.fixed?r.va:getVA(r)),0);
+  const tPA=PA.reduce((s,r)=>s+getVA(r),0);
+  const tCY=CY.reduce((s,r)=>s+getVA(r),0);
+  const fp=tIB+tFD+tPA+tCY;
+  const nw=fp+PASSIVE-DEBTS;
+  const firePct=(nw/FIRE_TARGET*100).toFixed(2);
+  $('kpi-nw').textContent=fmt0(nw);
+  $('kpi-fire').textContent=firePct+'%';
+  $('fire-bar-inner').style.width=firePct+'%';
+  $('kpi-fp').textContent=fmt0(fp);
+  const cost=658086.13,gp=fp-cost;
+  $('kpi-fp-gp').textContent=`G/P: ${fmt0(gp)} · ${(gp/cost*100).toFixed(2)}%`;
+  $('kpi-fp-gp').className='sub '+(gp>=0?'green':'red');
+}
+
+function updatePortfolioCards(){
+  const setCard=(vi,gi,rows,cost,fixedRows)=>{
+    const val=rows.reduce((s,r)=>s+(r.fixed?r.va:getVA(r)),0);
+    const gp=val-cost;
+    if($(vi))$(vi).textContent=fmt0(val);
+    if($(gi)){$(gi).textContent=`${gp>=0?'+':''}${fmt0(gp)} · ${(gp/cost*100).toFixed(2)}%`;$(gi).className='pc-gp '+(gp>=0?'green':'red');}
+  };
+  setCard('pc-val-indexed','pc-gp-indexed',IB,158387.48);
+  setCard('pc-val-fixed','pc-gp-fixed',FD,239723.33);
+  setCard('pc-val-pat','pc-gp-pat',PA,224801.07);
+  setCard('pc-val-cy','pc-gp-cy',CY,35174.25);
+}
+
+const PIE_COLORS=['#58a6ff','#3fb950','#f0b84b','#f85149','#bc8cff','#39d3aa','#d29922','#ff7b72','#79c0ff','#56d364'];
+let pieCharts={};
+
+function groupBy(rows,key){
+  const m={};
+  rows.forEach(r=>{const k=r[key]||'Otros';m[k]=(m[k]||0)+getVA(r);});
+  return Object.entries(m).map(([l,v])=>({l,v})).sort((a,b)=>b.v-a.v);
+}
+
+function drawPie(canvasId,legendId,items){
+  const canvas=$(canvasId);if(!canvas)return;
+  const total=items.reduce((s,x)=>s+x.v,0);
+  if(pieCharts[canvasId]){pieCharts[canvasId].destroy();}
+  pieCharts[canvasId]=new Chart(canvas,{
+    type:'doughnut',
+    data:{labels:items.map(x=>x.l),datasets:[{data:items.map(x=>x.v),backgroundColor:items.map((_,i)=>PIE_COLORS[i%PIE_COLORS.length]),borderColor:'#0d1117',borderWidth:2,hoverOffset:4}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${(ctx.parsed/total*100).toFixed(1)}% · ${fmt0(ctx.parsed)}`}}}}
+  });
+  $(legendId).innerHTML=items.map((x,i)=>`<div class="pie-legend-row"><span class="pie-dot" style="background:${PIE_COLORS[i%PIE_COLORS.length]}"></span><span class="pie-label">${x.l}</span><span class="pie-pct">${(x.v/total*100).toFixed(1)}%</span><span class="pie-val">${fmt0(x.v)}</span></div>`).join('');
+}
+
+function renderRow(r,total,subKey){
+  const va=r.fixed?r.va:getVA(r);
+  const lp=r.fixed?null:getLivePrice(r);
+  const gp=va-r.vc,gpp=gp/r.vc,w=va/total;
+  const priceDisp=r.fixed?fmt2(1):
+    lp!=null?`${fmt2(lp)} <span class="live-tag">● live</span>`:
+    r.pending?`${fmt2(r.cp)} <span class="pending-tag">⚠ base</span>`:
+    `${fmt2(r.cp)} <span class="stale-tag">base</span>`;
+  return `<tr>
+    <td><div class="td-name">${r.n}${r.pending?'<span class="pending-tag"> ⚠</span>':''}</div><div class="td-sub">${r[subKey]||r.cat||''}</div><div class="td-broker">${r.br}</div></td>
+    <td style="color:var(--blue);font-weight:500">${r.t&&!r.t.includes(':')&&!r.fixed?r.t:r.t?r.t.split(':')[1]||r.t:'—'}</td>
+    <td>${r.u!=null?num(r.u):'—'}</td>
+    <td>${r.cp!=null?fmt2(r.cp):'—'}</td>
+    <td>${priceDisp}</td>
+    <td>${fmt2(r.vc)}</td>
+    <td><b>${fmt2(va)}</b></td>
+    <td class="${sign(gp)}">${fmt2(gp)}</td>
+    <td class="${sign(gp)}">${pct(gpp)}</td>
+    <td>${(w*100).toFixed(2)}%</td>
+    <td>—</td>
+  </tr>`;
+}
+
+let openPanels=new Set();
+
+function renderAllTables(force){
+  if(force||openPanels.has('indexed')) renderTable('indexed');
+  if(force||openPanels.has('fixed')) renderTable('fixed');
+  if(force||openPanels.has('patrimonial')) renderTable('patrimonial');
+  if(force||openPanels.has('cycles')) renderTable('cycles');
+}
+
+function renderTable(id){
+  if(id==='indexed'){const t=IB.reduce((s,r)=>s+getVA(r),0);$('tbody-indexed').innerHTML=IB.map(r=>renderRow(r,t,'r')).join('');}
+  if(id==='fixed'){const t=FD.reduce((s,r)=>s+(r.fixed?r.va:getVA(r)),0);$('tbody-fixed').innerHTML=FD.map(r=>renderRow(r,t,'cat')).join('');}
+  if(id==='patrimonial'){const t=PA.reduce((s,r)=>s+getVA(r),0);$('tbody-patrimonial').innerHTML=PA.map(r=>renderRow(r,t,'sector')).join('');}
+  if(id==='cycles'){const t=CY.reduce((s,r)=>s+getVA(r),0);$('tbody-cycles').innerHTML=CY.map(r=>renderRow(r,t,'r')).join('');}
+}
+
+function redrawOpenPies(){
+  if(openPanels.has('indexed')) drawPie('pie-indexed','legend-indexed',groupBy(IB,'r'));
+  if(openPanels.has('patrimonial')) drawPie('pie-patrimonial','legend-patrimonial',groupBy(PA,'sector'));
+}
+
+function showDetail(id){
+  ['indexed','fixed','patrimonial','cycles'].forEach(x=>{
+    const p=$('detail-'+x);
+    if(x===id){p.className='detail-panel open';openPanels.add(id);}
+    else{p.className='detail-panel';}
+  });
+  renderTable(id);
+  if(id==='indexed') drawPie('pie-indexed','legend-indexed',groupBy(IB,'r'));
+  if(id==='patrimonial') drawPie('pie-patrimonial','legend-patrimonial',groupBy(PA,'sector'));
+  setTimeout(()=>$('detail-'+id).scrollIntoView({behavior:'smooth',block:'start'}),80);
+}
+function closeDetail(id){$('detail-'+id).className='detail-panel';openPanels.delete(id);}
+
+const HISTORY=[
+  {d:'2025-12-31',nw:1177851,fp:191782,lq:448074,ret:572641,ig:129506,pt:0,cy:2693,fi:59584},
+  {d:'2026-01-31',nw:1177127,fp:177847,lq:447985,ret:569142,ig:131035,pt:19090,cy:5109,fi:22613},
+  {d:'2026-02-28',nw:1250120,fp:207440,lq:469948,ret:593684,ig:116424,pt:56262,cy:10312,fi:24442},
+  {d:'2026-03-31',nw:1301725,fp:324117,lq:380831,ret:624330,ig:162886,pt:88149,cy:28073,fi:45009},
+  {d:'2026-04-30',nw:1276429,fp:634730,lq:276037,ret:654925,ig:158255,pt:148169,cy:39044,fi:289262},
+  {d:'2026-05-31',nw:1261189,fp:669932,lq:210130,ret:639485,ig:169004,pt:226439,cy:35352,fi:239136}
+];
+const SM=[
+  {k:'nw',label:'Patrimonio neto',color:'#58a6ff'},
+  {k:'fp',label:'Portafolios financieros',color:'#3fb950'},
+  {k:'lq',label:'Liquidez real',color:'#39d3aa'},
+  {k:'ret',label:'AFORE + PPR',color:'#bc8cff'},
+  {k:'ig',label:'Indizado Global',color:'#f0b84b'},
+  {k:'pt',label:'Patrimonial',color:'#f85149'},
+  {k:'cy',label:'Ciclos',color:'#d29922'},
+  {k:'fi',label:'Renta Fija',color:'#6e7681'}
+];
+let activeSeries=new Set(['nw','fp','ig','pt']);
+let evolChart=null;
+
+function exportJSON(){
+  const now=new Date();
+  const dateStr=now.toISOString().slice(0,10);
+  const timeStr=now.toTimeString().slice(0,5).replace(':','h');
+
+  const snapshot={
+    schema_version:'v15_dashboard_live_export',
+    exported_at:now.toISOString(),
+    price_source:'finnhub_live',
+    usd_mxn_live:usdmxn,
+    base_json_version:'v15_corte_2026_05_31',
+    summary:{
+      usd_mxn:usdmxn,
+      indexed_global:{
+        current_value_mxn:IB.reduce((s,r)=>s+getVA(r),0),
+        cost_mxn:158387.48
+      },
+      fixed_income:{
+        current_value_mxn:FD.reduce((s,r)=>s+(r.fixed?r.va:getVA(r)),0),
+        cost_mxn:239723.33
+      },
+      patrimonial:{
+        current_value_mxn:PA.reduce((s,r)=>s+getVA(r),0),
+        cost_mxn:224801.07
+      },
+      economic_cycles:{
+        current_value_mxn:CY.reduce((s,r)=>s+getVA(r),0),
+        cost_mxn:35174.25
+      },
+      passive_retirement_mxn:639485.18,
+      debts_mxn:48227.41
+    },
+    live_prices_usd:Object.fromEntries(
+      Object.entries(prices).map(([k,v])=>[k, +(v/usdmxn).toFixed(4)])
+    ),
+    holdings:{
+      indexed_global:IB.map(r=>({ticker:r.t,name:r.n,units:r.u,cost_basis_mxn:r.vc,current_value_mxn:getVA(r),price_mxn:getLivePrice(r)||+(getVA(r)/r.u).toFixed(4),live:getLivePrice(r)!=null,region:r.r,broker:r.br})),
+      fixed_income:FD.map(r=>({ticker:r.t||r.n,name:r.n,units:r.u,cost_basis_mxn:r.vc,current_value_mxn:r.fixed?r.va:getVA(r),live:!r.fixed&&getLivePrice(r)!=null,category:r.cat,broker:r.br})),
+      patrimonial:PA.map(r=>({ticker:r.t,name:r.n,units:r.u,cost_basis_mxn:r.vc,current_value_mxn:getVA(r),price_mxn:getLivePrice(r)||+(getVA(r)/r.u).toFixed(4),live:getLivePrice(r)!=null,sector:r.sector,broker:r.br})),
+      economic_cycles:CY.map(r=>({ticker:r.t,name:r.n,units:r.u,cost_basis_mxn:r.vc,current_value_mxn:getVA(r),price_mxn:getLivePrice(r)||+(getVA(r)/r.u).toFixed(4),live:getLivePrice(r)!=null,region:r.r,broker:r.br}))
+    }
+  };
+
+  const blob=new Blob([JSON.stringify(snapshot,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`portafolio_epd_live_${dateStr}_${timeStr}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  $('liveStatus').innerHTML=`<span class="pulse"></span>JSON exportado · ${dateStr} ${timeStr} · USD/MXN ${usdmxn.toFixed(4)}`;
+}
+
+function buildControls(){
+  $('seriesTogles').innerHTML=SM.map(s=>`<span class="stoggle ${activeSeries.has(s.k)?'':'off'}" style="color:${s.color};border-color:${s.color};background:${s.color}18" onclick="toggleS('${s.k}',this)">${s.label}</span>`).join('');
+}
+function toggleS(k,el){activeSeries.has(k)?activeSeries.delete(k):activeSeries.add(k);el.className='stoggle'+(activeSeries.has(k)?'':' off');updateEvol();}
+function getH(){const m=$('rangeSelect').value;let h=HISTORY.slice();if(m==='2026')h=h.filter(x=>x.d.startsWith('2026'));if(m==='r12')h=h.slice(-12);return h;}
+function updateEvol(){
+  const h=getH();
+  const labels=h.map(x=>x.d.slice(5));
+  const datasets=SM.filter(s=>activeSeries.has(s.k)).map(s=>({label:s.label,data:h.map(x=>x[s.k]),borderColor:s.color,backgroundColor:s.color+'22',borderWidth:2,pointRadius:4,pointHoverRadius:6,tension:0.25,fill:false}));
+  if(evolChart){evolChart.data.labels=labels;evolChart.data.datasets=datasets;evolChart.update();}
+  else{
+    evolChart=new Chart($('evolChart'),{type:'line',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{x:{ticks:{color:'#7d8fa3',font:{size:9},maxRotation:0},grid:{color:'#2a374820'}},y:{ticks:{color:'#7d8fa3',font:{size:9},callback:v=>'$'+Math.round(v/1000)+'k'},grid:{color:'#2a374820'}}},plugins:{legend:{display:false},tooltip:{backgroundColor:'#0d1117',borderColor:'#2a3748',borderWidth:1,titleColor:'#e6edf3',bodyColor:'#7d8fa3',callbacks:{label:ctx=>` ${ctx.dataset.label}: ${fmt0(ctx.parsed.y)}`}}}}});
+  }
+  $('evolLegend').innerHTML=SM.filter(s=>activeSeries.has(s.k)).map(s=>`<div class="legend-item"><span class="legend-dot" style="background:${s.color}"></span>${s.label}</div>`).join('');
+}
+$('rangeSelect').addEventListener('change',updateEvol);
+buildControls();updateEvol();
+</script>
+</body></html>
